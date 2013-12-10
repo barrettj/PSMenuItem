@@ -32,7 +32,7 @@
 #define PSPDFBlockImplCast
 #endif
 
-NSString *kMenuItemTrailer = @"ps_performMenuItem";
+NSString *kMenuItemTrailerPSMenuItem = @"ps_performMenuItem";
 
 // Add method + swizzle.
 void PSPDFReplaceMethod(Class c, SEL origSEL, SEL newSEL, IMP impl);
@@ -50,7 +50,7 @@ void PSPDFReplaceMethod(Class c, SEL origSEL, SEL newSEL, IMP impl) {
 // Checks for our custom selector.
 BOOL PSPDFIsMenuItemSelector(SEL selector);
 BOOL PSPDFPIsMenuItemSelector(SEL selector) {
-    return [NSStringFromSelector(selector) hasPrefix:kMenuItemTrailer];
+    return [NSStringFromSelector(selector) hasPrefix:kMenuItemTrailerPSMenuItem];
 }
 
 @interface PSMenuItem()
@@ -66,7 +66,7 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
  This might look scary, but it's actually not that bad.
  We hook into the three methods of UIResponder and NSObject to capture calls to our custom created selector.
  Then we find the UIMenuController and search for the corresponding PSMenuItem.
- If the kMenuItemTrailer is not detected, we call the original implementation.
+ If the kMenuItemTrailerPSMenuItem is not detected, we call the original implementation.
 
  This all wouldn't be necessary if UIMenuController would call our selectors with the UIMenuItem as sender.
  */
@@ -135,7 +135,7 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
     CFUUIDRef uuid = CFUUIDCreate(kCFAllocatorDefault);
     NSString *uuidString = CFBridgingRelease(CFUUIDCreateString(kCFAllocatorDefault, uuid));
     CFRelease(uuid);
-    SEL customSelector = NSSelectorFromString([NSString stringWithFormat:@"%@_%@_%@:", kMenuItemTrailer, strippedTitle, uuidString]);
+    SEL customSelector = NSSelectorFromString([NSString stringWithFormat:@"%@_%@_%@:", kMenuItemTrailerPSMenuItem, strippedTitle, uuidString]);
 
     if((self = [super initWithTitle:title action:customSelector])) {
         self.customSelector = customSelector;
