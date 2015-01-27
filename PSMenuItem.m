@@ -67,7 +67,7 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
  We hook into the three methods of UIResponder and NSObject to capture calls to our custom created selector.
  Then we find the UIMenuController and search for the corresponding PSMenuItem.
  If the kMenuItemTrailerPSMenuItem is not detected, we call the original implementation.
-
+ 
  This all wouldn't be necessary if UIMenuController would call our selectors with the UIMenuItem as sender.
  */
 + (void)installMenuHandlerForObject:(id)object {
@@ -75,11 +75,11 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
         @synchronized(self) {
             // object can be both a class or an instance of a class.
             Class objectClass = class_isMetaClass(object_getClass(object)) ? object : [object class];
-
+            
             // check if menu handler has been already installed.
             SEL canPerformActionSEL = @selector(pspdf_canPerformAction:withSender:);
             if (!class_getInstanceMethod(objectClass, canPerformActionSEL)) {
-
+                
                 // add canBecomeFirstResponder if it is not returning YES. (or if we don't know)
                 if (object == objectClass || ![object canBecomeFirstResponder]) {
                     SEL canBecomeFRSEL = @selector(pspdf_canBecomeFirstResponder);
@@ -88,25 +88,25 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
                     }));
                     PSPDFReplaceMethod(objectClass, @selector(canBecomeFirstResponder), canBecomeFRSEL, canBecomeFRIMP);
                 }
-
+                
                 // swizzle canPerformAction:withSender: for our custom selectors.
                 // Queried before the UIMenuController is shown.
                 IMP canPerformActionIMP = imp_implementationWithBlock(PSPDFBlockImplCast(^(id _self, SEL action, id sender) {
                     return PSPDFPIsMenuItemSelector(action) ? YES : ((BOOL (*)(id, SEL, SEL, id))objc_msgSend)(_self, canPerformActionSEL, action, sender);
                 }));
                 PSPDFReplaceMethod(objectClass, @selector(canPerformAction:withSender:), canPerformActionSEL, canPerformActionIMP);
-
+                
                 // swizzle methodSignatureForSelector:.
                 SEL methodSignatureSEL = @selector(pspdf_methodSignatureForSelector:);
                 IMP methodSignatureIMP = imp_implementationWithBlock(PSPDFBlockImplCast(^(id _self, SEL selector) {
                     if (PSPDFPIsMenuItemSelector(selector)) {
                         return [NSMethodSignature signatureWithObjCTypes:"v@:@"]; // fake it.
                     }else {
-                        return (NSMethodSignature *)objc_msgSend(_self, methodSignatureSEL, selector);
+                        return (NSMethodSignature *)((id (*)(id, SEL, SEL))objc_msgSend)(_self, methodSignatureSEL, selector);
                     }
                 }));
                 PSPDFReplaceMethod(objectClass, @selector(methodSignatureForSelector:), methodSignatureSEL, methodSignatureIMP);
-
+                
                 // swizzle forwardInvocation:
                 SEL forwardInvocationSEL = @selector(pspdf_forwardInvocation:);
                 IMP forwardInvocationIMP = imp_implementationWithBlock(PSPDFBlockImplCast(^(id _self, NSInvocation *invocation) {
@@ -117,7 +117,7 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
                             }
                         }
                     }else {
-                        objc_msgSend(_self, forwardInvocationSEL, invocation);
+                        ((id (*)(id, SEL, NSInvocation*))objc_msgSend)(_self, forwardInvocationSEL, invocation);
                     }
                 }));
                 PSPDFReplaceMethod(objectClass, @selector(forwardInvocation:), forwardInvocationSEL, forwardInvocationIMP);
@@ -136,7 +136,7 @@ BOOL PSPDFPIsMenuItemSelector(SEL selector) {
     NSString *uuidString = CFBridgingRelease(CFUUIDCreateString(kCFAllocatorDefault, uuid));
     CFRelease(uuid);
     SEL customSelector = NSSelectorFromString([NSString stringWithFormat:@"%@_%@_%@:", kMenuItemTrailerPSMenuItem, strippedTitle, uuidString]);
-
+    
     if((self = [super initWithTitle:title action:customSelector])) {
         self.customSelector = customSelector;
         _enabled = YES;
